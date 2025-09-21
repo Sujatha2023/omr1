@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>OMR Checker</title>
+  <style>
+    /* --- Page Background --- */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #9face6);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* --- Main Container --- */
+    .container {
+      max-width: 950px;
+      width: 100%;
+      background: #ffffffcc;
+      backdrop-filter: blur(12px);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    /* --- Title --- */
+    h2 {
+      text-align: center;
+      color: #333;
+      font-size: 26px;
+      margin-bottom: 24px;
+      font-weight: 700;
+      text-shadow: 1px 1px 2px #ffffff;
+    }
+
+    /* --- Controls (Set selector + Buttons) --- */
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    select {
+      padding: 8px 12px;
+      border: 2px solid #1976d2;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    select:hover {
+      border-color: #0d47a1;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: 0;
+      background: linear-gradient(135deg, #1976d2, #42a5f5);
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      transition: 0.3s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #757575, #9e9e9e);
+    }
+
+    /* --- Questions + Options --- */
+    .question {
+      margin: 14px 0;
+      text-align: left;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      background: #f9f9f9;
+      padding: 12px 16px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+      transition: 0.3s;
+    }
+    .question:hover {
+      transform: scale(1.01);
+      background: #f1faff;
+    }
+
+    .options {
+      display: flex;
+      gap: 22px;
+      margin-left: 8px;
+    }
+
+    /* --- Custom Radio Buttons --- */
+    .options label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      font-size: 15px;
+      transition: color 0.3s;
+    }
+    .options label:hover {
+      color: #1976d2;
+    }
+
+    input[type="radio"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #777;
+      border-radius: 50%;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s;
+    }
+    input[type="radio"]:checked {
+      border-color: #1976d2;
+      background: radial-gradient(circle at center, #42a5f5 40%, #ffffff 42%);
+      box-shadow: 0 0 0 4px #e3f2fd;
+    }
+
+    /* --- Result Section --- */
+    .result {
+      margin-top: 22px;
+      font-size: 16px;
+      text-align: left;
+      line-height: 1.6;
+      background: #f1faff;
+      padding: 14px 18px;
+      border-left: 5px solid #1976d2;
+      border-radius: 8px;
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    .correct { color: #2e7d32; font-weight: 600; }
+    .wrong { color: #c62828; font-weight: 600; }
+
+    /* --- Animations --- */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Your same HTML + JS (unchanged) -->
+  <div class="container">
+    <h2>OMR Answer Checker</h2>
+
+    <div class="controls">
+      <label>Select Set:
+        <select id="setSelect">
+          <option value="A">Set A</option>
+          <option value="B">Set B</option>
+        </select>
+      </label>
+
+      <button id="checkBtn">Check Answers</button>
+      <button id="clearBtn" class="secondary" type="button">Clear</button>
+    </div>
+
+    <div id="answersArea" aria-live="polite"></div>
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    var keySetA = {
+      1:'a',2:'b',3:'d',4:'a',5:'b',6:'d',7:'c',8:'a',9:'b',10:'c',
+      11:'a',12:'b',13:'d',14:'c',15:'c',16:'a',17:'c',18:'b',19:'d',20:'c'
+    };
+    var keySetB = {
+      1:'b',2:'c',3:'a',4:'d',5:'c',6:'a',7:'b',8:'d',9:'c',10:'a',
+      11:'b',12:'d',13:'c',14:'a',15:'b',16:'d',17:'a',18:'c',19:'b',20:'d'
+    };
+
+    var answersArea = document.getElementById('answersArea');
+
+    function buildQuestions(count) {
+      answersArea.innerHTML = '';
+      var letters = ['a','b','c','d'];
+      for (var i = 1; i <= count; i++) {
+        var qDiv = document.createElement('div');
+        qDiv.className = 'question';
+
+        var qLabel = document.createElement('strong');
+        qLabel.textContent = 'Q' + i + '.';
+        qDiv.appendChild(qLabel);
+
+        var optionsDiv = document.createElement('div');
+        optionsDiv.className = 'options';
+        optionsDiv.setAttribute('role','radiogroup');
+        optionsDiv.setAttribute('aria-label','Question ' + i);
+
+        for (var j = 0; j < letters.length; j++) {
+          var letter = letters[j];
+          var label = document.createElement('label');
+
+          var radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'q' + i;
+          radio.value = letter;
+
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(' ' + letter.toUpperCase()));
+          optionsDiv.appendChild(label);
+        }
+
+        qDiv.appendChild(optionsDiv);
+        answersArea.appendChild(qDiv);
+      }
+    }
+
+    buildQuestions(20);
+
+    function checkAnswers() {
+      var set = document.getElementById('setSelect').value;
+      var key = (set === 'A') ? keySetA : keySetB;
+
+      var score = 0;
+      var feedback = '';
+
+      for (var i = 1; i <= 20; i++) {
+        var radios = document.getElementsByName('q' + i);
+        var userAns = '';
+        for (var k = 0; k < radios.length; k++) {
+          if (radios[k].checked) { userAns = radios[k].value; break; }
+        }
+
+        if (!userAns) {
+          feedback += 'Q' + i + ': <span class="wrong">No answer ❌ (Ans: ' + key[i] + ')</span><br>';
+        } else if (userAns === key[i]) {
+          score++;
+          feedback += 'Q' + i + ': <span class="correct">Correct ✅</span><br>';
+        } else {
+          feedback += 'Q' + i + ': <span class="wrong">Wrong ❌ (Ans: ' + key[i] + ')</span><br>';
+        }
+      }
+
+      document.getElementById('result').innerHTML = 'Score: ' + score + '/20<br><br>' + feedback;
+    }
+
+    document.getElementById('checkBtn').addEventListener('click', checkAnswers);
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      for (var i = 1; i <= 20; i++) {
+        var radios = document.getElementsByName('q' + i);
+        for (var r = 0; r < radios.length; r++) { radios[r].checked = false; }
+      }
+      document.getElementById('result').innerHTML = '';
+    });
+  </script>
+</body>
+</html>
